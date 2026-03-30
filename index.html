@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>생명나무 키우기</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <style>
   body { text-align: center; font-family: sans-serif; background-color: #f4f7f6; padding: 20px; }
   .container { background: white; padding: 30px; border-radius: 15px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -18,16 +19,26 @@
   .fertilizer-btn { background-color: #FFC107; color: black; transition: 0.3s; }
   .fertilizer-btn:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; box-shadow: none; }
 
-  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+  /* 물 주기 팝업창 */
+  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10; }
   .modal-content { background: white; margin: 50% auto; padding: 20px; width: 80%; max-width: 300px; border-radius: 10px; }
   input[type="text"] { width: 90%; padding: 10px; margin: 15px 0; border: 1px solid #ccc; border-radius: 5px; }
   
+  /* 비료 성공 축하 메시지 (중앙 팝업) */
+  #success-overlay {
+    position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.85); color: #FFD700; padding: 20px 40px;
+    border-radius: 20px; font-size: 24px; font-weight: bold; z-index: 9999;
+    opacity: 0; pointer-events: none; transition: opacity 0.5s; display: none;
+    white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+
+  /* 하단 알림창(토스트) */
   #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; border-radius: 10px;}
   #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
   @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
   @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
   
-  /* 레벨 표시 스타일 */
   .level-badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }
 </style>
 </head>
@@ -39,7 +50,6 @@
   <button class="dept-btn" onclick="selectDept('2부')">2부</button>
   <button class="dept-btn" onclick="selectDept('3부')">3부</button>
   <button class="dept-btn" onclick="selectDept('새부')">새부 (새가족부)</button>
-  <button class="dept-btn" onclick="selectDept('햇살')">햇살</button>
 </div>
 
 <div id="game-screen" class="container">
@@ -51,37 +61,36 @@
   
   <p>경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">0</strong> <span style="color:#888; font-size: 14px;">/ <span id="next-exp">30</span></span></p>
 
-  <button class="action-btn water-btn" onclick="openModal('물')">💧 물 주기</button>
-  <button class="action-btn fertilizer-btn" id="fert-btn" onclick="openModal('비료')" disabled>✨ 비료(미션성공)</button>
+  <button class="action-btn water-btn" onclick="openWaterModal()">💧 물 주기</button>
+  <button class="action-btn fertilizer-btn" id="fert-btn" onclick="giveFertilizer()" disabled>✨ 비료(미션성공)</button>
 </div>
 
 <div id="action-modal" class="modal">
   <div class="modal-content">
-    <h3 id="modal-title">나무에게 한마디!</h3>
+    <h3>물 주는 분은 누구신가요?</h3>
     <p>부서: <strong id="modal-dept"></strong></p>
-    <input type="text" id="user-message" placeholder="메시지를 남겨주세요">
+    <input type="text" id="user-name" placeholder="이름을 입력해주세요.">
     <br>
-    <button class="action-btn water-btn" onclick="submitAction()">확인</button>
+    <button class="action-btn water-btn" onclick="submitWater()">확인</button>
     <button class="action-btn" onclick="closeModal()" style="background:#eee;">취소</button>
   </div>
 </div>
 
+<div id="success-overlay">🎉 미션 성공 축하합니다! 🎉</div>
 <div id="toast"></div>
 
 <script>
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcxs13guMDxG-ZPP56rRNVTuOWD8PLWaAOeZgQXH53FcOjPW_m5NI0TZErYMn84rSyNg/exec'; 
   
   let selectedDept = '';
-  let currentActionType = ''; 
   let currentExp = 0;
 
-  // 나무 성장 단계 설정 (30 경험치 단위)
   const treeStages = [
     { name: '새싹', icon: '🌱', limit: 30 },
     { name: '나물', icon: '🌿', limit: 60 },
     { name: '작은 나무', icon: '🪴', limit: 90 },
     { name: '큰 나무', icon: '🌳', limit: 120 },
-    { name: '열매', icon: '🍎', limit: Infinity } // 마지막 단계
+    { name: '열매', icon: '🍎', limit: Infinity }
   ];
 
   function selectDept(dept) {
@@ -100,8 +109,7 @@
       .then(response => response.json())
       .then(data => {
         currentExp = data.exp;
-        updateTreeUI(); // 불러온 경험치에 맞춰 나무 모양과 레벨 업데이트
-        
+        updateTreeUI(); 
         fertBtn.innerText = "✨ 비료(미션성공)";
         fertBtn.disabled = !data.enabled;
       })
@@ -111,50 +119,100 @@
       });
   }
 
-  // 경험치에 맞춰 나무의 아이콘과 이름을 변경해주는 함수
   function updateTreeUI() {
     let currentStageIndex = Math.floor(currentExp / 30);
-    
-    // 경험치가 아무리 높아도 마지막 단계(열매)를 넘지 않도록 처리
-    if (currentStageIndex >= treeStages.length) {
-      currentStageIndex = treeStages.length - 1;
-    }
+    if (currentStageIndex >= treeStages.length) currentStageIndex = treeStages.length - 1;
 
     const stage = treeStages[currentStageIndex];
-    
     document.getElementById('tree-display').innerText = stage.icon;
     document.getElementById('level-name').innerText = stage.name;
     document.getElementById('exp-display').innerText = currentExp;
     
-    // 다음 레벨까지 필요한 경험치 표시 (마지막 단계면 MAX로 표시)
     if (stage.limit === Infinity) {
       document.getElementById('next-exp').innerText = "MAX";
     } else {
       document.getElementById('next-exp').innerText = stage.limit;
     }
 
-    // 경험치가 오를 때 나무가 살짝 커졌다가 돌아오는 귀여운 효과
     const treeDisplay = document.getElementById('tree-display');
     treeDisplay.style.transform = "scale(1.2)";
     setTimeout(() => { treeDisplay.style.transform = "scale(1)"; }, 200);
   }
 
-  function openModal(type) { 
-    currentActionType = type;
+  // --- 물 주기 로직 ---
+  function openWaterModal() { 
     document.getElementById('action-modal').style.display = 'block'; 
-    
-    if(type === '물') {
-      document.getElementById('modal-title').innerText = "나무에게 한마디!";
-      document.getElementById('user-message').placeholder = "응원의 메시지를 남겨주세요";
-    } else {
-      document.getElementById('modal-title').innerText = "미션 성공 축하합니다!";
-      document.getElementById('user-message').placeholder = "미션 완료 소감을 남겨주세요";
-    }
   }
 
   function closeModal() { 
     document.getElementById('action-modal').style.display = 'none'; 
-    document.getElementById('user-message').value = ''; 
+    document.getElementById('user-name').value = ''; 
+  }
+
+  function submitWater() {
+    const userName = document.getElementById('user-name').value;
+    if(!userName) { alert("이름을 입력해주세요!"); return; }
+
+    currentExp += 10;
+    updateTreeUI(); 
+    closeModal();
+    showToast(`성공! ${userName}님이 나무에게 물을 주었습니다 (+10)`);
+
+    // 백그라운드 전송
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `dept=${encodeURIComponent(selectedDept)}&type=물&message=${encodeURIComponent(userName)}`
+    }).catch(error => console.error("데이터 저장 실패", error));
+  }
+
+  // --- 비료 주기 (폭죽 & 자동 전송) 로직 ---
+  function giveFertilizer() {
+    currentExp += 50;
+    updateTreeUI();
+
+    // 1. 축하 메시지 띄우기 (2~3초 후 서서히 사라짐)
+    const overlay = document.getElementById('success-overlay');
+    overlay.style.display = 'block';
+    setTimeout(() => { overlay.style.opacity = '1'; }, 10);
+
+    // 2. 화면 전체 폭죽 효과 (canvas-confetti)
+    var duration = 2500; // 2.5초
+    var end = Date.now() + duration;
+
+    (function frame() {
+      confetti({
+        particleCount: 5,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff']
+      });
+      confetti({
+        particleCount: 5,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff']
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    }());
+
+    // 3. 메시지 숨기기 타이머
+    setTimeout(() => {
+      overlay.style.opacity = '0';
+      setTimeout(() => { overlay.style.display = 'none'; }, 500); // fade out 시간 대기 후 display none
+    }, 2500);
+
+    // 4. 백그라운드 전송 (이름 대신 '미션 완료'로 기록)
+    fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `dept=${encodeURIComponent(selectedDept)}&type=비료&message=${encodeURIComponent("미션 완료")}`
+    }).catch(error => console.error("데이터 저장 실패", error));
   }
 
   function showToast(text) {
@@ -162,25 +220,6 @@
     toast.innerText = text;
     toast.className = "show";
     setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
-  }
-
-  function submitAction() {
-    const message = document.getElementById('user-message').value;
-    if(!message) { alert("메시지를 입력해주세요!"); return; }
-
-    const addExp = (currentActionType === '비료') ? 50 : 10;
-    currentExp += addExp;
-    
-    updateTreeUI(); // 늘어난 경험치에 맞춰 화면 즉시 업데이트
-    
-    closeModal();
-    showToast(`성공! 나무에게 ${currentActionType}을(를) 주었습니다 (+${addExp})`);
-
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent(currentActionType)}&message=${encodeURIComponent(message)}`
-    }).catch(error => console.error("데이터 저장 실패", error));
   }
 </script>
 
