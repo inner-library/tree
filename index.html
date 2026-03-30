@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나무 키우기 미션 게임</title>
+<style>
+  body { 
+    text-align: center; 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background-color: #f0f8ff;
+    padding-top: 50px;
+  }
+  .game-container {
+    background-color: white;
+    border-radius: 20px;
+    padding: 30px;
+    width: 300px;
+    margin: 0 auto;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  #tree-display { 
+    font-size: 100px; 
+    margin: 20px 0; 
+  }
+  button { 
+    padding: 15px 25px; 
+    font-size: 16px; 
+    cursor: pointer; 
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+  }
+  button:hover { background-color: #45a049; }
+  .stats { font-size: 18px; margin-bottom: 20px; color: #333; }
+  .progress-bar {
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 10px;
+    margin-top: 10px;
+  }
+  #progress {
+    width: 0%;
+    height: 20px;
+    background-color: #2196F3;
+    border-radius: 10px;
+    transition: width 0.5s;
+  }
+</style>
+</head>
+<body>
+
+<div class="game-container">
+  <h2>나만의 농장</h2>
+  
+  <div class="stats">
+    <p>현재 단계: <span id="level">1 (씨앗)</span></p>
+    <div class="progress-bar">
+      <div id="progress"></div>
+    </div>
+    <p style="font-size: 14px; margin-top: 5px;">물: <span id="exp">0</span> / <span id="max-exp">10</span> g</p>
+  </div>
+
+  <div id="tree-display">🌱</div>
+
+  <button onclick="completeMission()">💧 미션 완료 (물 2g 받기)</button>
+</div>
+
+<script>
+  let exp = 0;
+  let level = 1;
+  let maxExp = 10;
+  
+  // 나무 성장 단계 설정
+  const treeStages = {
+    1: { icon: '🌱', name: '1 (씨앗)' },
+    2: { icon: '🌿', name: '2 (새싹)' },
+    3: { icon: '🌳', name: '3 (무성한 나무)' },
+    4: { icon: '🍎', name: '4 (수확 가능!)' }
+  };
+
+  function completeMission() {
+    if (level >= 4) {
+      alert("나무가 완전히 자랐습니다! 수확을 진행해주세요.");
+      return;
+    }
+
+    // 미션 완료 시 경험치(물) 획득
+    exp += 2; 
+
+    // 레벨업 로직
+    if (exp >= maxExp) {
+      level++;
+      exp = 0;
+      maxExp += 10; // 다음 레벨은 더 많은 물이 필요함
+      alert("축하합니다! 나무가 한 단계 성장했어요!");
+    }
+
+    updateUI();
+  }
+
+  function updateUI() {
+    document.getElementById('exp').innerText = exp;
+    
+    let progressPercentage = (exp / maxExp) * 100;
+    
+    if(level < 4) {
+      document.getElementById('max-exp').innerText = maxExp;
+      document.getElementById('progress').style.width = progressPercentage + '%';
+    } else {
+      document.getElementById('max-exp').innerText = "MAX";
+      document.getElementById('progress').style.width = '100%';
+    }
+    
+    document.getElementById('level').innerText = treeStages[level].name;
+    document.getElementById('tree-display').innerText = treeStages[level].icon;
+  }
+</script>
+
+</body>
+</html>
