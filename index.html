@@ -19,12 +19,10 @@
   .fertilizer-btn { background-color: #FFC107; color: black; transition: 0.3s; }
   .fertilizer-btn:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; box-shadow: none; }
 
-  /* 물 주기 팝업창 */
   .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10; }
   .modal-content { background: white; margin: 50% auto; padding: 20px; width: 80%; max-width: 300px; border-radius: 10px; }
   input[type="text"] { width: 90%; padding: 10px; margin: 15px 0; border: 1px solid #ccc; border-radius: 5px; }
   
-  /* 비료 성공 축하 메시지 (중앙 팝업) */
   #success-overlay {
     position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
     background: rgba(0,0,0,0.85); color: #FFD700; padding: 20px 40px;
@@ -33,7 +31,6 @@
     white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   }
 
-  /* 하단 알림창(토스트) */
   #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; border-radius: 10px;}
   #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
   @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
@@ -139,7 +136,6 @@
     setTimeout(() => { treeDisplay.style.transform = "scale(1)"; }, 200);
   }
 
-  // --- 물 주기 로직 ---
   function openWaterModal() { 
     document.getElementById('action-modal').style.display = 'block'; 
   }
@@ -149,6 +145,7 @@
     document.getElementById('user-name').value = ''; 
   }
 
+  // --- 한글 깨짐 방지 인코딩 적용 ---
   function submitWater() {
     const userName = document.getElementById('user-name').value;
     if(!userName) { alert("이름을 입력해주세요!"); return; }
@@ -158,60 +155,44 @@
     closeModal();
     showToast(`성공! ${userName}님이 나무에게 물을 주었습니다 (+10)`);
 
-    // 백그라운드 전송
     fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `dept=${encodeURIComponent(selectedDept)}&type=물&message=${encodeURIComponent(userName)}`
+      body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent('물')}&message=${encodeURIComponent(userName)}`
     }).catch(error => console.error("데이터 저장 실패", error));
   }
 
-  // --- 비료 주기 (폭죽 & 자동 전송) 로직 ---
+  // --- 한글 깨짐 방지 인코딩 적용 ---
   function giveFertilizer() {
+    const fertBtn = document.getElementById('fert-btn');
+    fertBtn.disabled = true;
+
     currentExp += 50;
     updateTreeUI();
 
-    // 1. 축하 메시지 띄우기 (2~3초 후 서서히 사라짐)
     const overlay = document.getElementById('success-overlay');
     overlay.style.display = 'block';
     setTimeout(() => { overlay.style.opacity = '1'; }, 10);
 
-    // 2. 화면 전체 폭죽 효과 (canvas-confetti)
-    var duration = 2500; // 2.5초
+    var duration = 2500;
     var end = Date.now() + duration;
 
     (function frame() {
-      confetti({
-        particleCount: 5,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff']
-      });
-      confetti({
-        particleCount: 5,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff']
-      });
+      confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'] });
+      confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'] });
 
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
+      if (Date.now() < end) requestAnimationFrame(frame);
     }());
 
-    // 3. 메시지 숨기기 타이머
     setTimeout(() => {
       overlay.style.opacity = '0';
-      setTimeout(() => { overlay.style.display = 'none'; }, 500); // fade out 시간 대기 후 display none
+      setTimeout(() => { overlay.style.display = 'none'; }, 500);
     }, 2500);
 
-    // 4. 백그라운드 전송 (이름 대신 '미션 완료'로 기록)
     fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `dept=${encodeURIComponent(selectedDept)}&type=비료&message=${encodeURIComponent("미션 완료")}`
+      body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent('비료')}&message=${encodeURIComponent('미션 완료')}`
     }).catch(error => console.error("데이터 저장 실패", error));
   }
 
