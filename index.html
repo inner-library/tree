@@ -8,18 +8,15 @@
   body { text-align: center; font-family: sans-serif; background-color: #f4f7f6; padding: 20px; }
   .container { background: white; padding: 30px; border-radius: 15px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   
-  /* 화면 전환용 CSS */
   #game-screen { display: none; }
-  
   .dept-btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; cursor: pointer; background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; }
   
   #tree-display { font-size: 100px; margin: 20px 0; }
   .action-btn { padding: 12px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; margin: 5px; }
   .water-btn { background-color: #4CAF50; color: white; }
-  .fertilizer-btn { background-color: #FFC107; color: black; }
-  .fertilizer-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+  .fertilizer-btn { background-color: #FFC107; color: black; transition: 0.3s; }
+  .fertilizer-btn:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; }
 
-  /* 팝업(모달) CSS */
   .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
   .modal-content { background: white; margin: 50% auto; padding: 20px; width: 80%; max-width: 300px; border-radius: 10px; }
   input[type="text"] { width: 90%; padding: 10px; margin: 15px 0; border: 1px solid #ccc; border-radius: 5px; }
@@ -37,36 +34,34 @@
 </div>
 
 <div id="game-screen" class="container">
-  <h2 id="farm-title">생명나무 키우기</h2>
+  <h2>생명나무 키우기</h2>
   <h3 style="color: #666;"><span id="current-dept"></span>의 나무</h3>
   
   <div id="tree-display">🌱</div>
   <p>현재 경험치: <span id="exp-display">0</span></p>
 
-  <button class="action-btn water-btn" onclick="openModal()">💧 물 주기</button>
-  <button class="action-btn fertilizer-btn" id="fert-btn" disabled>✨ 비료(미션성공)</button>
+  <button class="action-btn water-btn" onclick="openModal('물')">💧 물 주기</button>
+  <button class="action-btn fertilizer-btn" id="fert-btn" onclick="openModal('비료')" disabled>✨ 비료(미션성공)</button>
 </div>
 
-<div id="water-modal" class="modal">
+<div id="action-modal" class="modal">
   <div class="modal-content">
-    <h3>나무에게 한마디!</h3>
+    <h3 id="modal-title">나무에게 한마디!</h3>
     <p>부서: <strong id="modal-dept"></strong></p>
-    <input type="text" id="user-message" placeholder="응원의 메시지를 남겨주세요">
+    <input type="text" id="user-message" placeholder="메시지를 남겨주세요">
     <br>
-    <button class="action-btn water-btn" onclick="submitWater()">확인</button>
+    <button class="action-btn water-btn" id="submit-btn" onclick="submitAction()">확인</button>
     <button class="action-btn" onclick="closeModal()" style="background:#eee;">취소</button>
   </div>
 </div>
 
 <script>
-  // GAS 웹앱 URL을 여기에 붙여넣으세요!
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcxs13guMDxG-ZPP56rRNVTuOWD8PLWaAOeZgQXH53FcOjPW_m5NI0TZErYMn84rSyNg/exec'; 
   
   let selectedDept = '';
-  // 실제 서비스에서는 경험치를 LocalStorage나 서버(GAS)에서 불러와야 합니다.
-  let deptExp = { '1부': 0, '2부': 0, '3부': 0, '새부': 0, '햇살': 0 };
+  let currentActionType = ''; // '물' 또는 '비료'
+  let exp = 0; // 프론트엔드 임시 경험치
 
-  // 부서 선택 시 화면 전환
   function selectDept(dept) {
     selectedDept = dept;
     document.getElementById('login-screen').style.display = 'none';
@@ -74,36 +69,73 @@
     
     document.getElementById('current-dept').innerText = selectedDept;
     document.getElementById('modal-dept').innerText = selectedDept;
-    updateTreeInfo();
+    
+    // 비료 버튼 상태 확인 중 표시
+    const fertBtn = document.getElementById('fert-btn');
+    fertBtn.innerText = "상태 확인 중...";
+    
+    // GAS에서 관리자 설정(체크박스) 상태 불러오기
+    fetch(`${SCRIPT_URL}?dept=${encodeURIComponent(selectedDept)}`)
+      .then(response => response.json())
+      .then(data => {
+        fertBtn.innerText = "✨ 비료(미션성공)";
+        if(data.enabled) {
+          fertBtn.disabled = false;
+        } else {
+          fertBtn.disabled = true;
+        }
+      })
+      .catch(error => {
+        fertBtn.innerText = "✨ 비료(미션성공)";
+      });
   }
 
-  function updateTreeInfo() {
-    document.getElementById('exp-display').innerText = deptExp[selectedDept];
-    // 경험치에 따라 아이콘 변경 로직 (생략: 이전 코드 참고)
+  function openModal(type) { 
+    currentActionType = type;
+    document.getElementById('action-modal').style.display = 'block'; 
+    
+    if(type === '물') {
+      document.getElementById('modal-title').innerText = "나무에게 한마디!";
+      document.getElementById('user-message').placeholder = "응원의 메시지를 남겨주세요";
+    } else {
+      document.getElementById('modal-title').innerText = "미션 성공 축하합니다!";
+      document.getElementById('user-message').placeholder = "미션 완료 소감을 남겨주세요";
+    }
   }
 
-  // 모달 열기/닫기
-  function openModal() { document.getElementById('water-modal').style.display = 'block'; }
-  function closeModal() { document.getElementById('water-modal').style.display = 'none'; document.getElementById('user-message').value = ''; }
+  function closeModal() { 
+    document.getElementById('action-modal').style.display = 'none'; 
+    document.getElementById('user-message').value = ''; 
+  }
 
-  // 물 주기 확인 버튼 클릭 시 (데이터 전송)
-  function submitWater() {
+  function submitAction() {
     const message = document.getElementById('user-message').value;
     if(!message) { alert("메시지를 입력해주세요!"); return; }
 
-    // 구글 시트로 데이터 전송
+    const btn = document.getElementById('submit-btn');
+    btn.innerText = "전송 중...";
+    btn.disabled = true;
+
+    // 구글 시트로 데이터 전송 (POST 요청)
     fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `dept=${encodeURIComponent(selectedDept)}&type=물&message=${encodeURIComponent(message)}`
+      body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent(currentActionType)}&message=${encodeURIComponent(message)}`
     })
     .then(response => {
-      alert("물 주기 완료! 시트에 기록되었습니다.");
-      deptExp[selectedDept] += 10; // 경험치 증가
-      updateTreeInfo();
+      alert(`${currentActionType} 주기 완료! 시트에 기록되었습니다.`);
+      
+      // 경험치 증가 로직 (비료는 물보다 더 많이 오르도록 설정)
+      exp += (currentActionType === '비료') ? 50 : 10; 
+      document.getElementById('exp-display').innerText = exp;
+      
       closeModal();
     })
-    .catch(error => alert("오류가 발생했습니다."));
+    .catch(error => alert("오류가 발생했습니다."))
+    .finally(() => {
+      btn.innerText = "확인";
+      btn.disabled = false;
+    });
   }
 </script>
 
