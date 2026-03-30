@@ -9,23 +9,26 @@
   .container { background: white; padding: 30px; border-radius: 15px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
   
   #game-screen { display: none; }
-  .dept-btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; cursor: pointer; background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; }
+  .dept-btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; cursor: pointer; background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; transition: background 0.2s; }
+  .dept-btn:hover { background: #bbdefb; }
   
-  #tree-display { font-size: 100px; margin: 20px 0; }
-  .action-btn { padding: 12px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; margin: 5px; }
+  #tree-display { font-size: 100px; margin: 10px 0; transition: transform 0.3s; }
+  .action-btn { padding: 12px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; margin: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
   .water-btn { background-color: #4CAF50; color: white; }
   .fertilizer-btn { background-color: #FFC107; color: black; transition: 0.3s; }
-  .fertilizer-btn:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; }
+  .fertilizer-btn:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; box-shadow: none; }
 
   .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
   .modal-content { background: white; margin: 50% auto; padding: 20px; width: 80%; max-width: 300px; border-radius: 10px; }
   input[type="text"] { width: 90%; padding: 10px; margin: 15px 0; border: 1px solid #ccc; border-radius: 5px; }
   
-  /* 알림 메시지 스타일 */
-  #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 2px; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; border-radius: 10px;}
+  #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; border-radius: 10px;}
   #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
   @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
   @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+  
+  /* 레벨 표시 스타일 */
+  .level-badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }
 </style>
 </head>
 <body>
@@ -41,10 +44,12 @@
 
 <div id="game-screen" class="container">
   <h2>생명나무 키우기</h2>
-  <h3 style="color: #666;"><span id="current-dept"></span>의 나무</h3>
+  <h3 style="color: #666; margin-bottom: 5px;"><span id="current-dept"></span>의 나무</h3>
   
+  <div class="level-badge">현재 단계: <span id="level-name">새싹</span></div>
   <div id="tree-display">🌱</div>
-  <p>현재 경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">데이터 불러오는 중...</strong></p>
+  
+  <p>경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">0</strong> <span style="color:#888; font-size: 14px;">/ <span id="next-exp">30</span></span></p>
 
   <button class="action-btn water-btn" onclick="openModal('물')">💧 물 주기</button>
   <button class="action-btn fertilizer-btn" id="fert-btn" onclick="openModal('비료')" disabled>✨ 비료(미션성공)</button>
@@ -68,9 +73,17 @@
   
   let selectedDept = '';
   let currentActionType = ''; 
-  let currentExp = 0; // 실제 경험치를 담아둘 변수
+  let currentExp = 0;
 
-  // 부서 선택 시
+  // 나무 성장 단계 설정 (30 경험치 단위)
+  const treeStages = [
+    { name: '새싹', icon: '🌱', limit: 30 },
+    { name: '나물', icon: '🌿', limit: 60 },
+    { name: '작은 나무', icon: '🪴', limit: 90 },
+    { name: '큰 나무', icon: '🌳', limit: 120 },
+    { name: '열매', icon: '🍎', limit: Infinity } // 마지막 단계
+  ];
+
   function selectDept(dept) {
     selectedDept = dept;
     document.getElementById('login-screen').style.display = 'none';
@@ -81,23 +94,49 @@
     
     const fertBtn = document.getElementById('fert-btn');
     fertBtn.innerText = "상태 확인 중...";
+    document.getElementById('exp-display').innerText = "...";
     
-    // 서버(시트)에서 기존 누적 경험치와 비료버튼 상태를 동시에 가져옴
     fetch(`${SCRIPT_URL}?dept=${encodeURIComponent(selectedDept)}`)
       .then(response => response.json())
       .then(data => {
-        // 1. 경험치 적용
         currentExp = data.exp;
-        document.getElementById('exp-display').innerText = currentExp;
+        updateTreeUI(); // 불러온 경험치에 맞춰 나무 모양과 레벨 업데이트
         
-        // 2. 비료 버튼 상태 적용
         fertBtn.innerText = "✨ 비료(미션성공)";
         fertBtn.disabled = !data.enabled;
       })
       .catch(error => {
-        document.getElementById('exp-display').innerText = "불러오기 실패";
+        document.getElementById('exp-display').innerText = "오류";
         fertBtn.innerText = "✨ 비료(미션성공)";
       });
+  }
+
+  // 경험치에 맞춰 나무의 아이콘과 이름을 변경해주는 함수
+  function updateTreeUI() {
+    let currentStageIndex = Math.floor(currentExp / 30);
+    
+    // 경험치가 아무리 높아도 마지막 단계(열매)를 넘지 않도록 처리
+    if (currentStageIndex >= treeStages.length) {
+      currentStageIndex = treeStages.length - 1;
+    }
+
+    const stage = treeStages[currentStageIndex];
+    
+    document.getElementById('tree-display').innerText = stage.icon;
+    document.getElementById('level-name').innerText = stage.name;
+    document.getElementById('exp-display').innerText = currentExp;
+    
+    // 다음 레벨까지 필요한 경험치 표시 (마지막 단계면 MAX로 표시)
+    if (stage.limit === Infinity) {
+      document.getElementById('next-exp').innerText = "MAX";
+    } else {
+      document.getElementById('next-exp').innerText = stage.limit;
+    }
+
+    // 경험치가 오를 때 나무가 살짝 커졌다가 돌아오는 귀여운 효과
+    const treeDisplay = document.getElementById('tree-display');
+    treeDisplay.style.transform = "scale(1.2)";
+    setTimeout(() => { treeDisplay.style.transform = "scale(1)"; }, 200);
   }
 
   function openModal(type) { 
@@ -118,7 +157,6 @@
     document.getElementById('user-message').value = ''; 
   }
 
-  // 화면 하단에 가볍게 뜨는 알림창 함수
   function showToast(text) {
     const toast = document.getElementById("toast");
     toast.innerText = text;
@@ -126,21 +164,18 @@
     setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
   }
 
-  // 확인 버튼을 눌렀을 때 실행되는 핵심 로직 (즉시 반영)
   function submitAction() {
     const message = document.getElementById('user-message').value;
     if(!message) { alert("메시지를 입력해주세요!"); return; }
 
-    // 1. 화면의 경험치를 사용자가 기다리지 않게 [즉시] 올려줍니다.
     const addExp = (currentActionType === '비료') ? 50 : 10;
     currentExp += addExp;
-    document.getElementById('exp-display').innerText = currentExp;
     
-    // 2. 팝업창을 즉시 닫고, 화면 하단에 예쁜 알림(토스트)을 띄웁니다.
+    updateTreeUI(); // 늘어난 경험치에 맞춰 화면 즉시 업데이트
+    
     closeModal();
     showToast(`성공! 나무에게 ${currentActionType}을(를) 주었습니다 (+${addExp})`);
 
-    // 3. 백그라운드에서 조용히 구글 시트로 데이터를 전송합니다. (사용자는 기다릴 필요 없음)
     fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
