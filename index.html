@@ -20,6 +20,12 @@
   .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
   .modal-content { background: white; margin: 50% auto; padding: 20px; width: 80%; max-width: 300px; border-radius: 10px; }
   input[type="text"] { width: 90%; padding: 10px; margin: 15px 0; border: 1px solid #ccc; border-radius: 5px; }
+  
+  /* 알림 메시지 스타일 */
+  #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 2px; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; border-radius: 10px;}
+  #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
+  @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+  @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
 </style>
 </head>
 <body>
@@ -38,7 +44,7 @@
   <h3 style="color: #666;"><span id="current-dept"></span>의 나무</h3>
   
   <div id="tree-display">🌱</div>
-  <p>현재 경험치: <span id="exp-display">0</span></p>
+  <p>현재 경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">데이터 불러오는 중...</strong></p>
 
   <button class="action-btn water-btn" onclick="openModal('물')">💧 물 주기</button>
   <button class="action-btn fertilizer-btn" id="fert-btn" onclick="openModal('비료')" disabled>✨ 비료(미션성공)</button>
@@ -50,18 +56,21 @@
     <p>부서: <strong id="modal-dept"></strong></p>
     <input type="text" id="user-message" placeholder="메시지를 남겨주세요">
     <br>
-    <button class="action-btn water-btn" id="submit-btn" onclick="submitAction()">확인</button>
+    <button class="action-btn water-btn" onclick="submitAction()">확인</button>
     <button class="action-btn" onclick="closeModal()" style="background:#eee;">취소</button>
   </div>
 </div>
+
+<div id="toast"></div>
 
 <script>
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcxs13guMDxG-ZPP56rRNVTuOWD8PLWaAOeZgQXH53FcOjPW_m5NI0TZErYMn84rSyNg/exec'; 
   
   let selectedDept = '';
-  let currentActionType = ''; // '물' 또는 '비료'
-  let exp = 0; // 프론트엔드 임시 경험치
+  let currentActionType = ''; 
+  let currentExp = 0; // 실제 경험치를 담아둘 변수
 
+  // 부서 선택 시
   function selectDept(dept) {
     selectedDept = dept;
     document.getElementById('login-screen').style.display = 'none';
@@ -70,22 +79,23 @@
     document.getElementById('current-dept').innerText = selectedDept;
     document.getElementById('modal-dept').innerText = selectedDept;
     
-    // 비료 버튼 상태 확인 중 표시
     const fertBtn = document.getElementById('fert-btn');
     fertBtn.innerText = "상태 확인 중...";
     
-    // GAS에서 관리자 설정(체크박스) 상태 불러오기
+    // 서버(시트)에서 기존 누적 경험치와 비료버튼 상태를 동시에 가져옴
     fetch(`${SCRIPT_URL}?dept=${encodeURIComponent(selectedDept)}`)
       .then(response => response.json())
       .then(data => {
+        // 1. 경험치 적용
+        currentExp = data.exp;
+        document.getElementById('exp-display').innerText = currentExp;
+        
+        // 2. 비료 버튼 상태 적용
         fertBtn.innerText = "✨ 비료(미션성공)";
-        if(data.enabled) {
-          fertBtn.disabled = false;
-        } else {
-          fertBtn.disabled = true;
-        }
+        fertBtn.disabled = !data.enabled;
       })
       .catch(error => {
+        document.getElementById('exp-display').innerText = "불러오기 실패";
         fertBtn.innerText = "✨ 비료(미션성공)";
       });
   }
@@ -108,34 +118,34 @@
     document.getElementById('user-message').value = ''; 
   }
 
+  // 화면 하단에 가볍게 뜨는 알림창 함수
+  function showToast(text) {
+    const toast = document.getElementById("toast");
+    toast.innerText = text;
+    toast.className = "show";
+    setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+  }
+
+  // 확인 버튼을 눌렀을 때 실행되는 핵심 로직 (즉시 반영)
   function submitAction() {
     const message = document.getElementById('user-message').value;
     if(!message) { alert("메시지를 입력해주세요!"); return; }
 
-    const btn = document.getElementById('submit-btn');
-    btn.innerText = "전송 중...";
-    btn.disabled = true;
+    // 1. 화면의 경험치를 사용자가 기다리지 않게 [즉시] 올려줍니다.
+    const addExp = (currentActionType === '비료') ? 50 : 10;
+    currentExp += addExp;
+    document.getElementById('exp-display').innerText = currentExp;
+    
+    // 2. 팝업창을 즉시 닫고, 화면 하단에 예쁜 알림(토스트)을 띄웁니다.
+    closeModal();
+    showToast(`성공! 나무에게 ${currentActionType}을(를) 주었습니다 (+${addExp})`);
 
-    // 구글 시트로 데이터 전송 (POST 요청)
+    // 3. 백그라운드에서 조용히 구글 시트로 데이터를 전송합니다. (사용자는 기다릴 필요 없음)
     fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent(currentActionType)}&message=${encodeURIComponent(message)}`
-    })
-    .then(response => {
-      alert(`${currentActionType} 주기 완료! 시트에 기록되었습니다.`);
-      
-      // 경험치 증가 로직 (비료는 물보다 더 많이 오르도록 설정)
-      exp += (currentActionType === '비료') ? 50 : 10; 
-      document.getElementById('exp-display').innerText = exp;
-      
-      closeModal();
-    })
-    .catch(error => alert("오류가 발생했습니다."))
-    .finally(() => {
-      btn.innerText = "확인";
-      btn.disabled = false;
-    });
+    }).catch(error => console.error("데이터 저장 실패", error));
   }
 </script>
 
