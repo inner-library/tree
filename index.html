@@ -2,101 +2,235 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>생명나무 키우기</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>행복 농장: 생명나무 키우기</title>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <style>
-  body { text-align: center; font-family: sans-serif; background-color: #f4f7f6; padding: 20px; }
-  .container { background: white; padding: 30px; border-radius: 15px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-  
-  #game-screen { display: none; }
-  .dept-btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; cursor: pointer; background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; transition: background 0.2s; }
-  .dept-btn:hover { background: #bbdefb; }
-  
-  #tree-display { font-size: 100px; margin: 10px 0; transition: transform 0.3s; }
-  .action-btn { padding: 12px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; margin: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  .water-btn { background-color: #4CAF50; color: white; transition: 0.3s; }
-  .water-btn:disabled { background-color: #9E9E9E; cursor: not-allowed; }
-  .fertilizer-btn { background-color: #FFC107; color: black; transition: 0.3s; }
-  .fertilizer-btn:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; box-shadow: none; }
-
-  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10; }
-  .modal-content { background: white; margin: 50% auto; padding: 20px; width: 80%; max-width: 300px; border-radius: 10px; }
-  input[type="text"] { width: 90%; padding: 10px; margin: 15px 0; border: 1px solid #ccc; border-radius: 5px; }
-  
-  #success-overlay {
-    position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
-    background: rgba(0,0,0,0.85); color: #FFD700; padding: 20px 40px;
-    border-radius: 20px; font-size: 24px; font-weight: bold; z-index: 9999;
-    opacity: 0; pointer-events: none; transition: opacity 0.5s; display: none;
-    white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  /* --- 9:16 비율 및 전체 배경 설정 --- */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* 농장 배경 이미지 (고화질 예시) */
+    background-image: url('https://img.freepik.com/free-vector/sunny-day-at-farm_1308-46903.jpg?t=st=1716893608~exp=1716897208~hmac=a4b8f7f2b988f5a65c4046777c92b236b2f679e954999f8e028b18a47012674e&w=1800');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    font-family: 'Comic Sans MS', 'Noto Sans KR', cursive, sans-serif; /* 약간 더 게임 같은 폰트 느낌 */
+    overflow: hidden; /* 스크롤 막기 */
   }
 
-  #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; border-radius: 10px;}
+  /* 9:16 비율 가상 뷰포트 */
+  .mobile-viewport {
+    width: 100vw;
+    /* 9:16 비율 계산 */
+    height: calc(100vw * 16 / 9);
+    
+    /* 화면이 너무 크면 PC에서는 크기 제한 */
+    max-width: 450px;
+    max-height: 800px;
+    
+    /* 게임 화면 테두리 (PC에서 볼 때) */
+    border: 10px solid #8B4513; /* 나무색 테두리 */
+    border-radius: 20px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    
+    position: relative;
+    overflow-y: auto; /* 내용 많으면 내부 스크롤 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* --- UI 요소 스타일 오버홀 (게임 스타일) --- */
+  .container { 
+    width: 90%;
+    height: 95%;
+    /* UI 박스 배경 (반투명 나무느낌 색상) */
+    background: rgba(255, 248, 220, 0.85); 
+    padding: 20px; 
+    border-radius: 15px; 
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* 위아래로 꽉차게 배치 */
+  }
+  
+  #game-screen { display: none; }
+  
+  h2, h3 { 
+    margin: 10px 0; 
+    color: #5D4037; 
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1); 
+  }
+  h2 { font-size: 28px; font-weight: bold; }
+
+  /* 부서 버튼 스타일 (나무느낌) */
+  .dept-btn { 
+    display: block; width: 100%; 
+    padding: 15px; margin: 10px 0; 
+    font-size: 20px; font-weight: bold;
+    cursor: pointer; 
+    background: #A1887F; /* 연한 나무색 */
+    color: white;
+    border: 3px solid #6D4C41; 
+    border-radius: 10px; 
+    transition: transform 0.1s, background 0.2s; 
+    box-shadow: 0 4px 0 #5D4037;
+  }
+  .dept-btn:hover { background: #8D6E63; }
+  .dept-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #5D4037; }
+  
+  /* 나무 디스플레이 (나중에 이미지로 바꿀 예정) */
+  #tree-display { font-size: 130px; margin: 10px 0; transition: transform 0.3s; }
+  
+  /* 메인 액션 버튼 스타일 (나무느낌) */
+  .action-btn { 
+    padding: 15px 25px; 
+    font-size: 18px; 
+    cursor: pointer; 
+    border-radius: 12px; 
+    font-weight: bold; 
+    margin: 8px; 
+    box-shadow: 0 5px 0 rgba(0,0,0,0.2);
+    transition: transform 0.1s;
+  }
+  .action-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+  
+  /* 물 주기 버튼 (초록/파랑 나무) */
+  .water-btn { 
+    background: #4CAF50; color: white; 
+    border: 4px solid #388E3C; 
+  }
+  
+  /* 비료 버튼 (노랑/갈색 나무) */
+  .fertilizer-btn { 
+    background-color: #FFC107; color: black; 
+    border: 4px solid #FFA000;
+  }
+  .fertilizer-btn:disabled { 
+    background-color: #e0e0e0; border-color: #999; color: #999; 
+    cursor: not-allowed; box-shadow: none; transform: none;
+  }
+
+  /* --- 점수판 및 모달 (게임 팝업 스타일) --- */
+  .level-badge { 
+    display: inline-block; 
+    background: #8BC34A; /* 연두색 */
+    color: white; 
+    padding: 8px 20px; 
+    border-radius: 20px; 
+    font-weight: bold; 
+    margin-bottom: 10px; 
+    border: 2px solid #689F38;
+  }
+  
+  #exp-area {
+    background: rgba(255,255,255,0.7);
+    border-radius: 10px;
+    padding: 10px;
+    margin: 10px 0;
+  }
+
+  /* 모달 팝업 스타일 (나무판 느낌) */
+  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99; }
+  .modal-content { 
+    background: #FFF8E1; 
+    margin: 30% auto; padding: 25px; 
+    width: 85%; max-width: 320px; 
+    border-radius: 15px; 
+    border: 8px solid #8B4513; 
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+  }
+  input[type="text"] { width: 90%; padding: 12px; margin: 15px 0; border: 2px solid #ccc; border-radius: 8px; font-size: 16px; }
+  
+  /* 축하 오버레이 및 토스트 */
+  #success-overlay {
+    position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.85); color: #FFD700; padding: 30px 50px;
+    border-radius: 25px; font-size: 28px; font-weight: bold; z-index: 9999;
+    opacity: 0; pointer-events: none; transition: opacity 0.5s; display: none;
+    white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 5px solid #FFD700;
+  }
+
+  #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; padding: 16px; position: fixed; z-index: 100; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.2); }
   #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
   @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
   @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
   
-  .level-badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }
 </style>
 </head>
 <body>
 
-<div id="login-screen" class="container">
-  <h2>어느 부서이신가요?</h2>
-  <button class="dept-btn" onclick="selectDept('1부')">1부</button>
-  <button class="dept-btn" onclick="selectDept('2부')">2부</button>
-  <button class="dept-btn" onclick="selectDept('3부')">3부</button>
-  <button class="dept-btn" onclick="selectDept('새부')">새부 (새가족부)</button>
-</div>
+<div class="mobile-viewport">
 
-<div id="game-screen" class="container">
-  <h2>생명나무 키우기</h2>
-  <h3 style="color: #666; margin-bottom: 5px;"><span id="current-dept"></span>의 나무</h3>
-  
-  <div class="level-badge">현재 단계: <span id="level-name">새싹</span></div>
-  <div id="tree-display">🌱</div>
-  
-  <p>경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">0</strong> <span style="color:#888; font-size: 14px;">/ <span id="next-exp">100</span></span></p>
+  <div id="login-screen" class="container">
+    <h2>🌳 어느 부서이신가요?</h2>
+    <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
+      <button class="dept-btn" onclick="selectDept('1부')">1부 농장</button>
+      <button class="dept-btn" onclick="selectDept('2부')">2부 농장</button>
+      <button class="dept-btn" onclick="selectDept('3부')">3부 농장</button>
+      <button class="dept-btn" onclick="selectDept('새부')">새가족 농장 (새부)</button>
+    </div>
+  </div>
 
-  <button class="action-btn water-btn" onclick="openWaterModal()">💧 물 주기</button>
-  <!-- 클릭 시 비료 모달창을 띄우도록 변경 -->
-  <button class="action-btn fertilizer-btn" id="fert-btn" onclick="openFertilizerModal()" disabled>✨ 비료(미션성공)</button>
-</div>
+  <div id="game-screen" class="container">
+    <div>
+      <h2>생명나무 키우기</h2>
+      <h3 style="color: #8D6E63; margin-bottom: 5px;">[<span id="current-dept"></span>의 농장]</h3>
+      <div class="level-badge">현재 단계: <span id="level-name">새싹</span></div>
+    </div>
+    
+    <div id="tree-display">🌱</div>
+    
+    <div id="exp-area">
+      <p style="margin: 0; font-size: 18px; font-weight: bold; color: #5D4037;">성장 점수 (경험치)</p>
+      <p style="margin: 5px 0 0 0;"><strong id="exp-display" style="font-size: 36px; color: #4CAF50; text-shadow: 1px 1px 0 #fff;">0</strong> <span style="color:#888; font-size: 16px;">/ <span id="next-exp">100</span> 점</span></p>
+    </div>
 
-<!-- 물 주기 모달 -->
-<div id="action-modal" class="modal">
+    <div style="margin-bottom: 10px;">
+      <button class="action-btn water-btn" onclick="openWaterModal()">💧 물 주기</button>
+      <button class="action-btn fertilizer-btn" id="fert-btn" onclick="openFertilizerModal()" disabled>✨ 미션성공 비료</button>
+    </div>
+  </div>
+
+</div> <div id="action-modal" class="modal">
   <div class="modal-content">
-    <h3>물 주는 분은 누구신가요?</h3>
-    <p>부서: <strong id="modal-dept"></strong></p>
+    <h3 style="color: #6D4C41;">💧 물 주는 분은<br>누구신가요?</h3>
+    <p style="background: rgba(121, 85, 72, 0.1); padding: 5px; border-radius: 5px; font-weight: bold;">농장: <strong id="modal-dept"></strong></p>
     <input type="text" id="user-name" placeholder="이름을 입력해주세요.">
     <br>
     <button class="action-btn water-btn" id="submit-water-btn" onclick="submitWater()">확인</button>
-    <button class="action-btn" onclick="closeModal()" style="background:#eee;">취소</button>
+    <button class="action-btn" onclick="closeModal()" style="background:#eee; color:#333; border: 3px solid #ccc;">취소</button>
   </div>
 </div>
 
-<!-- ✨ 새롭게 추가된 비료(미션) 모달 -->
 <div id="fertilizer-modal" class="modal">
   <div class="modal-content">
-    <h3>어떤 미션을 완료하셨나요?</h3>
-    <p>부서: <strong id="modal-fert-dept"></strong></p>
+    <h3 style="color: #FFA000;">✨ 어떤 미션을<br>완료하셨나요?</h3>
+    <p style="background: rgba(121, 85, 72, 0.1); padding: 5px; border-radius: 5px; font-weight: bold;">농장: <strong id="modal-fert-dept"></strong></p>
     <input type="text" id="mission-name" placeholder="완료한 미션 내용을 적어주세요.">
     <br>
     <button class="action-btn fertilizer-btn" id="submit-fert-btn" onclick="submitFertilizer()">확인</button>
-    <button class="action-btn" onclick="closeFertilizerModal()" style="background:#eee;">취소</button>
+    <button class="action-btn" onclick="closeFertilizerModal()" style="background:#eee; color:#333; border: 3px solid #ccc;">취소</button>
   </div>
 </div>
 
-<div id="success-overlay">🎉 미션 성공 축하합니다! 🎉</div>
+<div id="success-overlay">🎉 미션 성공!<br>축하합니다! 🎉</div>
 <div id="toast"></div>
 
 <script>
+  // ※ 구글 앱스 스크립트 웹앱 URL을 입력하세요 (예시 URL)
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcxs13guMDxG-ZPP56rRNVTuOWD8PLWaAOeZgQXH53FcOjPW_m5NI0TZErYMn84rSyNg/exec'; 
   
   let selectedDept = '';
   let currentExp = 0;
 
+  // 경험치 단계 설정 (바나나 추가)
   const treeStages = [
     { name: '새싹', icon: '🌱', limit: 100 },
     { name: '나물', icon: '🌿', limit: 200 },
@@ -112,27 +246,29 @@
     
     document.getElementById('current-dept').innerText = selectedDept;
     document.getElementById('modal-dept').innerText = selectedDept;
-    document.getElementById('modal-fert-dept').innerText = selectedDept; // 비료 모달에도 부서 이름 세팅
+    document.getElementById('modal-fert-dept').innerText = selectedDept; 
     
     const fertBtn = document.getElementById('fert-btn');
     fertBtn.innerText = "상태 확인 중...";
     document.getElementById('exp-display').innerText = "...";
     
+    // 부서별 총 경험치 및 비료 상태 가져오기
     fetch(`${SCRIPT_URL}?dept=${encodeURIComponent(selectedDept)}`)
       .then(response => response.json())
       .then(data => {
         currentExp = data.exp;
         updateTreeUI(); 
-        fertBtn.innerText = "✨ 비료(미션성공)";
-        fertBtn.disabled = !data.enabled;
+        fertBtn.innerText = "✨ 미션성공 비료";
+        fertBtn.disabled = !data.enabled; // 비료 사용 가능 여부
       })
       .catch(error => {
         document.getElementById('exp-display').innerText = "오류";
-        fertBtn.innerText = "✨ 비료(미션성공)";
+        fertBtn.innerText = "✨ 미션성공 비료";
       });
   }
 
   function updateTreeUI() {
+    // 경험치 기반 단계 계산 (100점 단위)
     let currentStageIndex = Math.floor(currentExp / 100);
     if (currentStageIndex >= treeStages.length) currentStageIndex = treeStages.length - 1;
 
@@ -147,12 +283,13 @@
       document.getElementById('next-exp').innerText = stage.limit;
     }
 
+    // 단계 상승 애니메이션 이펙트
     const treeDisplay = document.getElementById('tree-display');
     treeDisplay.style.transform = "scale(1.2)";
     setTimeout(() => { treeDisplay.style.transform = "scale(1)"; }, 200);
   }
 
-  // --- 물 주기 관련 함수 ---
+  // --- 물 주기 함수 ---
   function openWaterModal() { 
     document.getElementById('action-modal').style.display = 'block'; 
   }
@@ -167,29 +304,33 @@
     if(!userName) { alert("이름을 입력해주세요!"); return; }
 
     const submitBtn = document.getElementById('submit-water-btn');
-    submitBtn.innerText = "시트 확인 중...";
+    submitBtn.innerText = "확인 중...";
     submitBtn.disabled = true;
 
+    // 30분 쿨다운 체크 요청
     const checkUrl = `${SCRIPT_URL}?action=checkCooldown&dept=${encodeURIComponent(selectedDept)}&name=${encodeURIComponent(userName)}`;
     
     fetch(checkUrl)
       .then(response => response.json())
       .then(data => {
         if (data.allowed === false) {
-          alert(`${userName}님은 이미 물을 주셨습니다! 💦\n약 ${data.remaining}분 후에 다른 기기가 아닌 어디서든 다시 시도해주세요.`);
+          // 거절: 쿨다운 중
+          alert(`${userName}님은 이미 물을 주셨습니다! 💦\n약 ${data.remaining}분 후에 다시 시도해주세요.`);
           submitBtn.innerText = "확인";
           submitBtn.disabled = false;
           return;
         }
 
-        currentExp += 10;
+        // 승인: 경험치 증가 및 화면 업데이트
+        currentExp += 10; // HTML 내 계산값 (스크립트와 동일)
         updateTreeUI(); 
         closeModal();
-        showToast(`성공! ${userName}님이 나무에게 물을 주었습니다 (+10)`);
+        showToast(`성공! ${userName}님이 나무에게 물을 주었습니다 (+10 점)`);
 
         submitBtn.innerText = "확인";
         submitBtn.disabled = false;
 
+        // 시트에 데이터 저장 (POST 요청)
         fetch(SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -203,7 +344,7 @@
       });
   }
 
-  // --- 비료(미션) 관련 함수 ---
+  // --- 비료(미션) 함수 ---
   function openFertilizerModal() {
     document.getElementById('fertilizer-modal').style.display = 'block';
   }
@@ -217,29 +358,26 @@
     const missionName = document.getElementById('mission-name').value.trim();
     if(!missionName) { alert("완료하신 미션을 입력해주세요!"); return; }
 
-    // 모달창 닫기
     closeFertilizerModal();
 
-    // 버튼 비활성화 (한 번만 누를 수 있게)
     const fertBtn = document.getElementById('fert-btn');
     fertBtn.disabled = true;
 
-    // 경험치 증가
+    // 경험치 증가 (+10 점)
     currentExp += 10;
     updateTreeUI();
 
-    // 화면 축하 이펙트
+    // 축하 애니메이션
     const overlay = document.getElementById('success-overlay');
     overlay.style.display = 'block';
     setTimeout(() => { overlay.style.opacity = '1'; }, 10);
 
+    // 폭죽 이펙트
     var duration = 2500;
     var end = Date.now() + duration;
-
     (function frame() {
       confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'] });
       confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'] });
-
       if (Date.now() < end) requestAnimationFrame(frame);
     }());
 
@@ -248,10 +386,9 @@
       setTimeout(() => { overlay.style.display = 'none'; }, 500);
     }, 2500);
 
-    // 하단 토스트 메시지에 미션 이름 표시
-    showToast(`✨ '${missionName}' 미션 완료! (+10)`);
+    showToast(`✨ 농장 경험치 +10 점 상승!`);
 
-    // 스프레드시트에 저장 (message 값에 입력한 미션 이름을 보냅니다)
+    // 시트에 데이터 저장
     fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
