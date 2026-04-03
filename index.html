@@ -106,7 +106,7 @@
     flex-direction: column;
     justify-content: flex-end; /* 👈 이미지를 컨테이너의 맨 아래(상태창 바로 위)로 보냅니다. */
     align-items: center;
-    padding-bottom: 20px; /* 👈 나무와 상태창 사이의 간격입니다. 원하는 대로 숫자를 조절하세요! (0으로 하면 완전 밀착됩니다) */
+    padding-bottom: 30px; /* 👈 나무와 상태창 사이의 간격입니다. 원하는 대로 숫자를 조절하세요! (0으로 하면 완전 밀착됩니다) */
   }
 
   /* --- [수정] 이모지 스타일에서 이미지 스타일로 변경 --- */
@@ -294,7 +294,7 @@
 
 <div id="action-modal" class="modal">
   <div class="modal-content">
-    <h3>💧 물 주는 분은?</h3>
+    <h3>💧 물 주는 분은 누구인가요?</h3>
     <p style="color:#666; margin-bottom:5px;">부서: <strong id="modal-dept" style="color:#333;"></strong></p>
     <input type="text" id="user-name" placeholder="이름을 입력해주세요">
     <button class="dept-btn water-btn" style="width:100%; aspect-ratio:unset; padding:12px; margin-top:10px; border-radius:10px;" id="submit-water-btn" onclick="submitWater()">확인</button>
