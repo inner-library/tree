@@ -60,9 +60,11 @@
   <p>경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">0</strong> <span style="color:#888; font-size: 14px;">/ <span id="next-exp">100</span></span></p>
 
   <button class="action-btn water-btn" onclick="openWaterModal()">💧 물 주기</button>
-  <button class="action-btn fertilizer-btn" id="fert-btn" onclick="giveFertilizer()" disabled>✨ 비료(미션성공)</button>
+  <!-- 클릭 시 비료 모달창을 띄우도록 변경 -->
+  <button class="action-btn fertilizer-btn" id="fert-btn" onclick="openFertilizerModal()" disabled>✨ 비료(미션성공)</button>
 </div>
 
+<!-- 물 주기 모달 -->
 <div id="action-modal" class="modal">
   <div class="modal-content">
     <h3>물 주는 분은 누구신가요?</h3>
@@ -71,6 +73,18 @@
     <br>
     <button class="action-btn water-btn" id="submit-water-btn" onclick="submitWater()">확인</button>
     <button class="action-btn" onclick="closeModal()" style="background:#eee;">취소</button>
+  </div>
+</div>
+
+<!-- ✨ 새롭게 추가된 비료(미션) 모달 -->
+<div id="fertilizer-modal" class="modal">
+  <div class="modal-content">
+    <h3>어떤 미션을 완료하셨나요?</h3>
+    <p>부서: <strong id="modal-fert-dept"></strong></p>
+    <input type="text" id="mission-name" placeholder="완료한 미션 내용을 적어주세요.">
+    <br>
+    <button class="action-btn fertilizer-btn" id="submit-fert-btn" onclick="submitFertilizer()">확인</button>
+    <button class="action-btn" onclick="closeFertilizerModal()" style="background:#eee;">취소</button>
   </div>
 </div>
 
@@ -98,6 +112,7 @@
     
     document.getElementById('current-dept').innerText = selectedDept;
     document.getElementById('modal-dept').innerText = selectedDept;
+    document.getElementById('modal-fert-dept').innerText = selectedDept; // 비료 모달에도 부서 이름 세팅
     
     const fertBtn = document.getElementById('fert-btn');
     fertBtn.innerText = "상태 확인 중...";
@@ -137,6 +152,7 @@
     setTimeout(() => { treeDisplay.style.transform = "scale(1)"; }, 200);
   }
 
+  // --- 물 주기 관련 함수 ---
   function openWaterModal() { 
     document.getElementById('action-modal').style.display = 'block'; 
   }
@@ -151,36 +167,29 @@
     if(!userName) { alert("이름을 입력해주세요!"); return; }
 
     const submitBtn = document.getElementById('submit-water-btn');
-    
-    // 중복 클릭 방지 및 시트 확인 중 표시
     submitBtn.innerText = "시트 확인 중...";
     submitBtn.disabled = true;
 
-    // 1. 구글 스프레드시트에 해당 유저가 최근 30분 이내에 물을 줬는지 확인 요청
     const checkUrl = `${SCRIPT_URL}?action=checkCooldown&dept=${encodeURIComponent(selectedDept)}&name=${encodeURIComponent(userName)}`;
     
     fetch(checkUrl)
       .then(response => response.json())
       .then(data => {
         if (data.allowed === false) {
-          // 30분이 안 지났으면 거절 메시지 출력
           alert(`${userName}님은 이미 물을 주셨습니다! 💦\n약 ${data.remaining}분 후에 다른 기기가 아닌 어디서든 다시 시도해주세요.`);
           submitBtn.innerText = "확인";
           submitBtn.disabled = false;
           return;
         }
 
-        // 2. 30분이 지났거나 처음이라면 정상적으로 물 주기 진행
         currentExp += 10;
         updateTreeUI(); 
         closeModal();
         showToast(`성공! ${userName}님이 나무에게 물을 주었습니다 (+10)`);
 
-        // 버튼 상태 원상복구
         submitBtn.innerText = "확인";
         submitBtn.disabled = false;
 
-        // 실제 데이터 시트에 저장 (POST 요청)
         fetch(SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -194,13 +203,32 @@
       });
   }
 
-  function giveFertilizer() {
+  // --- 비료(미션) 관련 함수 ---
+  function openFertilizerModal() {
+    document.getElementById('fertilizer-modal').style.display = 'block';
+  }
+
+  function closeFertilizerModal() {
+    document.getElementById('fertilizer-modal').style.display = 'none';
+    document.getElementById('mission-name').value = '';
+  }
+
+  function submitFertilizer() {
+    const missionName = document.getElementById('mission-name').value.trim();
+    if(!missionName) { alert("완료하신 미션을 입력해주세요!"); return; }
+
+    // 모달창 닫기
+    closeFertilizerModal();
+
+    // 버튼 비활성화 (한 번만 누를 수 있게)
     const fertBtn = document.getElementById('fert-btn');
     fertBtn.disabled = true;
 
+    // 경험치 증가
     currentExp += 10;
     updateTreeUI();
 
+    // 화면 축하 이펙트
     const overlay = document.getElementById('success-overlay');
     overlay.style.display = 'block';
     setTimeout(() => { overlay.style.opacity = '1'; }, 10);
@@ -220,10 +248,14 @@
       setTimeout(() => { overlay.style.display = 'none'; }, 500);
     }, 2500);
 
+    // 하단 토스트 메시지에 미션 이름 표시
+    showToast(`✨ '${missionName}' 미션 완료! (+10)`);
+
+    // 스프레드시트에 저장 (message 값에 입력한 미션 이름을 보냅니다)
     fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent('비료')}&message=${encodeURIComponent('미션 완료')}`
+      body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent('비료')}&message=${encodeURIComponent(missionName)}`
     }).catch(error => console.error("데이터 저장 실패", error));
   }
 
