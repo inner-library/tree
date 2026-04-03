@@ -111,15 +111,14 @@
 
   /* --- [수정] 이모지 스타일에서 이미지 스타일로 변경 --- */
   #tree-display {
-    /* font-size: 150px;  <- 제거 */
-    width: 200px; /* 원하시는 이미지 크기로 조절하세요 */
-    height: 200px; /* 원하시는 이미지 크기로 조절하세요 */
-    object-fit: contain; /* 이미지 비율 유지 */
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
     aspect-ratio: 1 / 1;
     filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease; /* opacity 전환 효과 추가 */
     margin-bottom: -20px;
-    color: transparent; /* 이 한 줄을 추가! (글자와 엑박을 숨겨줍니다) */
+    opacity: 0; /* 👈 핵심! 처음에는 투명하게 숨겨둡니다. */
   }
   /* -------------------------------------------------- */
 
@@ -368,12 +367,23 @@
     
     // 1. 여기서 이미 treeDisplay를 선언(const) 했습니다.
     const treeDisplay = document.getElementById('tree-display');
+    
+    // 👈 [추가된 부분] 새 이미지를 불러오기 전에 다시 투명하게 만듭니다. (자연스러운 전환을 위해)
+    treeDisplay.style.opacity = 0; 
+    
+    // 이미지가 완전히 로드되었을 때만 화면에 보이게(투명도 1) 설정합니다.
+    treeDisplay.onload = function() {
+        treeDisplay.style.opacity = 1;
+    };
+    
     treeDisplay.src = stage.icon;
     treeDisplay.style.width = stage.size;   // 폭(width) 변경
     treeDisplay.style.height = stage.size;  // 높이(height) 변경
     
     document.getElementById('level-name').innerText = stage.name;
     document.getElementById('exp-display').innerText = currentExp;
+
+    // ... (이하 기존 코드 동일)
     
     // UI 전용 프로그레스 바 로직
     let nextLimit = stage.limit;
