@@ -2,28 +2,225 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>생명나무 키우기</title>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 <style>
-  body { text-align: center; font-family: sans-serif; background-color: #f4f7f6; padding: 20px; }
-  .container { background: white; padding: 30px; border-radius: 15px; max-width: 400px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-  
-  #game-screen { display: none; }
-  .dept-btn { display: block; width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; cursor: pointer; background: #e3f2fd; border: 1px solid #bbdefb; border-radius: 8px; transition: background 0.2s; }
-  .dept-btn:hover { background: #bbdefb; }
-  
-  #tree-display { font-size: 100px; margin: 10px 0; transition: transform 0.3s; }
-  .action-btn { padding: 12px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; margin: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  .water-btn { background-color: #4CAF50; color: white; transition: 0.3s; }
-  .water-btn:disabled { background-color: #9E9E9E; cursor: not-allowed; }
-  .fertilizer-btn { background-color: #FFC107; color: black; transition: 0.3s; }
-  .fertilizer-btn:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; box-shadow: none; }
+  :root {
+    --primary-green: #4CAF50;
+  }
 
-  .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10; }
-  .modal-content { background: white; margin: 50% auto; padding: 20px; width: 80%; max-width: 300px; border-radius: 10px; }
-  input[type="text"] { width: 90%; padding: 10px; margin: 15px 0; border: 1px solid #ccc; border-radius: 5px; }
-  
+  body {
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    font-family: 'Pretendard', sans-serif;
+    /* 배경 이미지 경로를 넣어주세요. (현재는 임시 URL 적용) */
+    background: url('https://r.jina.ai/i/05d92004278440029b4e891396a51d08') no-repeat center center fixed;
+    background-color: #a8e6cf; /* 이미지 로딩 전 기본 배경색 */
+    background-size: cover;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .container {
+    width: 90%;
+    max-width: 400px;
+    height: 90vh;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* 공통 타이틀 스타일 */
+  h2 {
+    color: #2c3e50;
+    text-shadow: 2px 2px 4px rgba(255,255,255,0.8);
+    font-size: 28px;
+    margin-top: 20px;
+  }
+
+  /* 로그인(부서 선택) 화면 */
+  #login-screen {
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 20px;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    height: auto;
+    margin: auto;
+  }
+
+  .dept-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+  }
+
+  .dept-btn {
+    aspect-ratio: 1.5 / 1;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    border: 4px solid #888;
+    border-radius: 25px;
+    background: linear-gradient(to bottom, #f0f0f0, #ccc);
+    box-shadow: 0 6px 0 #777;
+    transition: all 0.1s;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dept-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #777;
+  }
+
+  .dept-btn.new-dept {
+    background: linear-gradient(to bottom, #d2a679, #8b5a2b);
+    color: white;
+    border-color: #5d3a1a;
+    box-shadow: 0 6px 0 #3e2711;
+  }
+
+  /* 게임 화면 */
+  #game-screen { display: none; width: 100%; height: 100%; }
+
+  #tree-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  #tree-display {
+    font-size: 150px;
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    margin-bottom: -20px;
+  }
+
+  /* 상태창 (하단 중앙) */
+  .status-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 15px;
+    width: 80%;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    box-sizing: border-box;
+  }
+
+  .level-badge {
+    background: #4a90e2;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    margin-right: 5px;
+  }
+
+  .exp-bar-bg {
+    background: #e0e0e0;
+    height: 15px;
+    border-radius: 10px;
+    margin-top: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  #exp-bar-fill {
+    background: var(--primary-green);
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease-in-out;
+  }
+
+  /* 하단 액션 버튼 */
+  .action-area {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    margin-bottom: 30px;
+  }
+
+  .round-btn {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 6px solid;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+    transition: all 0.2s;
+  }
+
+  .water-btn {
+    background: linear-gradient(135deg, #aed9e0, #5da2d5);
+    border-color: #4a90e2;
+    color: #fff;
+  }
+
+  .fertilizer-btn {
+    background: linear-gradient(135deg, #fce38a, #f38181);
+    border-color: #ea5455;
+    color: #fff;
+  }
+
+  .round-btn:disabled {
+    filter: grayscale(1);
+    opacity: 0.7;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none !important;
+  }
+
+  .round-btn:active:not(:disabled) {
+    transform: translateY(4px) scale(0.95);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  }
+
+  .round-btn span { font-size: 32px; margin-bottom: 5px; }
+
+  /* 모달 스타일 */
+  .modal { 
+    display: none; position: fixed; top: 0; left: 0; 
+    width: 100%; height: 100%; background: rgba(0,0,0,0.6); 
+    z-index: 100; backdrop-filter: blur(3px); 
+  }
+  .modal-content { 
+    background: white; margin: 40% auto; padding: 25px; 
+    width: 80%; max-width: 300px; border-radius: 20px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3); text-align: center;
+  }
+  .modal-content h3 { margin-top: 0; color: #333; }
+  input[type="text"] { 
+    width: 100%; padding: 12px; margin: 15px 0; 
+    border: 2px solid #ddd; border-radius: 10px; 
+    box-sizing: border-box; font-size: 16px; text-align: center;
+  }
+
+  /* 이펙트 및 알림 */
   #success-overlay {
     position: fixed; top: 40%; left: 50%; transform: translate(-50%, -50%);
     background: rgba(0,0,0,0.85); color: #FFD700; padding: 20px 40px;
@@ -32,59 +229,82 @@
     white-space: nowrap; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   }
 
-  #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; padding: 16px; position: fixed; z-index: 1; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px; border-radius: 10px;}
+  #toast { 
+    visibility: hidden; min-width: 250px; background-color: #333; 
+    color: #fff; text-align: center; padding: 16px; position: fixed; 
+    z-index: 200; left: 50%; bottom: 50px; transform: translateX(-50%); 
+    font-size: 15px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
   #toast.show { visibility: visible; animation: fadein 0.5s, fadeout 0.5s 2.5s; }
-  @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
-  @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
-  
-  .level-badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; }
+  @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 50px; opacity: 1;} }
+  @keyframes fadeout { from {bottom: 50px; opacity: 1;} to {bottom: 0; opacity: 0;} }
 </style>
 </head>
 <body>
 
+<!-- 부서 선택 화면 -->
 <div id="login-screen" class="container">
   <h2>어느 부서이신가요?</h2>
-  <button class="dept-btn" onclick="selectDept('1부')">1부</button>
-  <button class="dept-btn" onclick="selectDept('2부')">2부</button>
-  <button class="dept-btn" onclick="selectDept('3부')">3부</button>
-  <button class="dept-btn" onclick="selectDept('새부')">새부 (새가족부)</button>
+  <div class="dept-grid">
+    <button class="dept-btn" onclick="selectDept('1부')">1부</button>
+    <button class="dept-btn" onclick="selectDept('2부')">2부</button>
+    <button class="dept-btn" onclick="selectDept('3부')">3부</button>
+    <button class="dept-btn new-dept" onclick="selectDept('새부')">새부<br><small style="font-size:12px; font-weight:normal;">(새가족부)</small></button>
+  </div>
 </div>
 
+<!-- 게임 메인 화면 -->
 <div id="game-screen" class="container">
-  <h2>생명나무 키우기</h2>
-  <h3 style="color: #666; margin-bottom: 5px;"><span id="current-dept"></span>의 나무</h3>
+  <h2><span id="current-dept"></span>의 나무</h2>
   
-  <div class="level-badge">현재 단계: <span id="level-name">새싹</span></div>
-  <div id="tree-display">🌱</div>
-  
-  <p>경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">0</strong> <span style="color:#888; font-size: 14px;">/ <span id="next-exp">100</span></span></p>
+  <div id="tree-container">
+    <div id="tree-display">🌱</div>
+  </div>
 
-  <button class="action-btn water-btn" onclick="openWaterModal()">💧 물 주기</button>
-  <!-- 클릭 시 비료 모달창을 띄우도록 변경 -->
-  <button class="action-btn fertilizer-btn" id="fert-btn" onclick="openFertilizerModal()" disabled>✨ 비료(미션성공)</button>
+  <div class="status-card">
+    <div style="display:flex; justify-content:center; align-items:center;">
+      <span class="level-badge">LEVEL</span> 
+      <strong id="level-name" style="font-size: 18px; color: #333;">새싹</strong>
+    </div>
+    
+    <div class="exp-bar-bg">
+      <div id="exp-bar-fill"></div>
+    </div>
+    
+    <div style="margin-top:8px; font-size:15px; color:#555; text-align:right; font-weight:bold;">
+      EXP: <span id="exp-display" style="color:var(--primary-green);">0</span> / <span id="next-exp">100</span>
+    </div>
+  </div>
+
+  <div class="action-area">
+    <button class="round-btn water-btn" onclick="openWaterModal()">
+      <span>💧</span>물 주기
+    </button>
+    <button class="round-btn fertilizer-btn" id="fert-btn" onclick="openFertilizerModal()" disabled>
+      <span>✨</span>비료
+    </button>
+  </div>
 </div>
 
 <!-- 물 주기 모달 -->
 <div id="action-modal" class="modal">
   <div class="modal-content">
-    <h3>물 주는 분은 누구신가요?</h3>
-    <p>부서: <strong id="modal-dept"></strong></p>
-    <input type="text" id="user-name" placeholder="이름을 입력해주세요.">
-    <br>
-    <button class="action-btn water-btn" id="submit-water-btn" onclick="submitWater()">확인</button>
-    <button class="action-btn" onclick="closeModal()" style="background:#eee;">취소</button>
+    <h3>💧 물 주는 분은?</h3>
+    <p style="color:#666; margin-bottom:5px;">부서: <strong id="modal-dept" style="color:#333;"></strong></p>
+    <input type="text" id="user-name" placeholder="이름을 입력해주세요">
+    <button class="dept-btn water-btn" style="width:100%; aspect-ratio:unset; padding:12px; margin-top:10px; border-radius:10px;" id="submit-water-btn" onclick="submitWater()">확인</button>
+    <p onclick="closeModal()" style="color:#999; cursor:pointer; margin-top:15px; font-weight:bold;">취소</p>
   </div>
 </div>
 
-<!-- ✨ 새롭게 추가된 비료(미션) 모달 -->
+<!-- 비료 모달 -->
 <div id="fertilizer-modal" class="modal">
   <div class="modal-content">
-    <h3>어떤 미션을 완료하셨나요?</h3>
-    <p>부서: <strong id="modal-fert-dept"></strong></p>
-    <input type="text" id="mission-name" placeholder="완료한 미션 내용을 적어주세요.">
-    <br>
-    <button class="action-btn fertilizer-btn" id="submit-fert-btn" onclick="submitFertilizer()">확인</button>
-    <button class="action-btn" onclick="closeFertilizerModal()" style="background:#eee;">취소</button>
+    <h3>✨ 미션 완료!</h3>
+    <p style="color:#666; margin-bottom:5px;">부서: <strong id="modal-fert-dept" style="color:#333;"></strong></p>
+    <input type="text" id="mission-name" placeholder="어떤 미션인가요?">
+    <button class="dept-btn new-dept" style="width:100%; aspect-ratio:unset; padding:12px; margin-top:10px; border-radius:10px;" id="submit-fert-btn" onclick="submitFertilizer()">확인</button>
+    <p onclick="closeFertilizerModal()" style="color:#999; cursor:pointer; margin-top:15px; font-weight:bold;">취소</p>
   </div>
 </div>
 
@@ -92,6 +312,7 @@
 <div id="toast"></div>
 
 <script>
+  // 사용하시던 구글 앱스 스크립트 주소 유지
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzcxs13guMDxG-ZPP56rRNVTuOWD8PLWaAOeZgQXH53FcOjPW_m5NI0TZErYMn84rSyNg/exec'; 
   
   let selectedDept = '';
@@ -108,14 +329,13 @@
   function selectDept(dept) {
     selectedDept = dept;
     document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('game-screen').style.display = 'block';
+    document.getElementById('game-screen').style.display = 'flex'; // 수정된 레이아웃 flex 적용
     
     document.getElementById('current-dept').innerText = selectedDept;
     document.getElementById('modal-dept').innerText = selectedDept;
-    document.getElementById('modal-fert-dept').innerText = selectedDept; // 비료 모달에도 부서 이름 세팅
+    document.getElementById('modal-fert-dept').innerText = selectedDept;
     
     const fertBtn = document.getElementById('fert-btn');
-    fertBtn.innerText = "상태 확인 중...";
     document.getElementById('exp-display').innerText = "...";
     
     fetch(`${SCRIPT_URL}?dept=${encodeURIComponent(selectedDept)}`)
@@ -123,12 +343,10 @@
       .then(data => {
         currentExp = data.exp;
         updateTreeUI(); 
-        fertBtn.innerText = "✨ 비료(미션성공)";
         fertBtn.disabled = !data.enabled;
       })
       .catch(error => {
         document.getElementById('exp-display').innerText = "오류";
-        fertBtn.innerText = "✨ 비료(미션성공)";
       });
   }
 
@@ -141,10 +359,15 @@
     document.getElementById('level-name').innerText = stage.name;
     document.getElementById('exp-display').innerText = currentExp;
     
-    if (stage.limit === Infinity) {
+    // UI 전용 프로그레스 바 로직 추가
+    let nextLimit = stage.limit;
+    if (nextLimit === Infinity) {
       document.getElementById('next-exp').innerText = "MAX";
+      document.getElementById('exp-bar-fill').style.width = "100%";
     } else {
-      document.getElementById('next-exp').innerText = stage.limit;
+      document.getElementById('next-exp').innerText = nextLimit;
+      const percent = (currentExp % 100);
+      document.getElementById('exp-bar-fill').style.width = percent + "%";
     }
 
     const treeDisplay = document.getElementById('tree-display');
@@ -167,7 +390,7 @@
     if(!userName) { alert("이름을 입력해주세요!"); return; }
 
     const submitBtn = document.getElementById('submit-water-btn');
-    submitBtn.innerText = "시트 확인 중...";
+    submitBtn.innerText = "확인 중...";
     submitBtn.disabled = true;
 
     const checkUrl = `${SCRIPT_URL}?action=checkCooldown&dept=${encodeURIComponent(selectedDept)}&name=${encodeURIComponent(userName)}`;
@@ -176,7 +399,7 @@
       .then(response => response.json())
       .then(data => {
         if (data.allowed === false) {
-          alert(`${userName}님은 이미 물을 주셨습니다! 💦\n약 ${data.remaining}분 후에 다른 기기가 아닌 어디서든 다시 시도해주세요.`);
+          alert(`${userName}님은 이미 물을 주셨습니다! 💦\n약 ${data.remaining}분 후에 다시 시도해주세요.`);
           submitBtn.innerText = "확인";
           submitBtn.disabled = false;
           return;
@@ -185,7 +408,7 @@
         currentExp += 10;
         updateTreeUI(); 
         closeModal();
-        showToast(`성공! ${userName}님이 나무에게 물을 주었습니다 (+10)`);
+        showToast(`성공! ${userName}님이 물을 주었습니다 (+10)`);
 
         submitBtn.innerText = "확인";
         submitBtn.disabled = false;
@@ -217,18 +440,14 @@
     const missionName = document.getElementById('mission-name').value.trim();
     if(!missionName) { alert("완료하신 미션을 입력해주세요!"); return; }
 
-    // 모달창 닫기
     closeFertilizerModal();
 
-    // 버튼 비활성화 (한 번만 누를 수 있게)
     const fertBtn = document.getElementById('fert-btn');
     fertBtn.disabled = true;
 
-    // 경험치 증가
     currentExp += 10;
     updateTreeUI();
 
-    // 화면 축하 이펙트
     const overlay = document.getElementById('success-overlay');
     overlay.style.display = 'block';
     setTimeout(() => { overlay.style.opacity = '1'; }, 10);
@@ -248,10 +467,8 @@
       setTimeout(() => { overlay.style.display = 'none'; }, 500);
     }, 2500);
 
-    // 하단 토스트 메시지에 미션 이름 표시
     showToast(`✨ '${missionName}' 미션 완료! (+10)`);
 
-    // 스프레드시트에 저장 (message 값에 입력한 미션 이름을 보냅니다)
     fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
