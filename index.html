@@ -15,11 +15,15 @@
     padding: 0;
     text-align: center;
     font-family: 'Pretendard', sans-serif;
-    /* 깃허브에 업로드한 배경 이미지 파일명(tree.png) */
     background: url('tree.png') no-repeat center center fixed;
-    background-color: #a8e6cf; /* 이미지 로딩 전 기본 배경색 */
+    background-color: #a8e6cf;
     background-size: cover;
-    height: 100vh;
+    
+    /* 👇 여기를 수정합니다 */
+    height: 100vh; /* 구형 브라우저용 예비 코드 */
+    height: 100dvh; /* 👈 모바일 하단바를 피해 화면 크기를 자동으로 맞춰줍니다! */
+    /* 👆 여기까지 */
+    
     overflow: hidden;
     display: flex;
     justify-content: center;
@@ -29,7 +33,7 @@
   .container {
     width: 90%;
     max-width: 400px;
-    height: 90vh;
+    height: 95dvh; /* 👈 90vh 였던 것을 95dvh로 변경해 주세요 */
     position: relative;
     display: flex;
     flex-direction: column;
@@ -164,7 +168,11 @@
     display: flex;
     justify-content: space-around;
     width: 100%;
-    margin-bottom: 30px;
+    
+    /* 👇 여기를 수정합니다 */
+    margin-bottom: 20px; 
+    padding-bottom: env(safe-area-inset-bottom, 20px); /* 👈 스마트폰 하단 안전 영역(Safe Area)을 자동으로 확보해 줍니다. */
+    /* 👆 여기까지 */
   }
 
   .round-btn {
