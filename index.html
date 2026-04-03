@@ -325,13 +325,15 @@
 
   // --- [수정] 이모지 대신 이미지 파일 경로 설정 ---
   // 준비하신 이미지 파일 이름으로 수정해주세요. (예: sprout.png, herb.png 등)
+// --- [수정] 단계별 이미지 크기(size) 속성 추가 ---
   const treeStages = [
-    { name: '새싹', icon: 'aaaa.png', limit: 100 },
-    { name: '나물', icon: 'aaaaa.png', limit: 200 },
-    { name: '작은나무', icon: 'aaaaaa.png', limit: 300 },
-    { name: '큰나무', icon: 'aaaaaaa.png', limit: 400 },
-    { name: '바나나', icon: 'aaaaaaaa.png', limit: Infinity }
+    { name: '새싹', icon: 'aaaa.png', limit: 100, size: '100px' },   /* 가장 작게 */
+    { name: '나물', icon: 'aaaaa.png', limit: 200, size: '150px' },
+    { name: '작은나무', icon: 'aaaaaa.png', limit: 300, size: '200px' },
+    { name: '큰나무', icon: 'aaaaaaa.png', limit: 400, size: '250px' },
+    { name: '바나나', icon: 'aaaaaaaa.png', limit: Infinity, size: '300px' } /* 가장 크게 */
   ];
+  // ----------------------------------------------
   // ----------------------------------------------
 
   function selectDept(dept) {
@@ -364,8 +366,11 @@
 
     const stage = treeStages[currentStageIndex];
     
-    // --- [수정] innerText 대신 src 속성 변경 ---
-    document.getElementById('tree-display').src = stage.icon;
+    // --- [수정] 이미지 경로와 함께 크기도 같이 변경 ---
+    const treeDisplay = document.getElementById('tree-display');
+    treeDisplay.src = stage.icon;
+    treeDisplay.style.width = stage.size;   // 폭(width) 변경
+    treeDisplay.style.height = stage.size;  // 높이(height) 변경
     // ------------------------------------------
     
     document.getElementById('level-name').innerText = stage.name;
