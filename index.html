@@ -15,7 +15,7 @@
     padding: 0;
     text-align: center;
     font-family: 'Pretendard', sans-serif;
-    /* 깃허브에 업로드할 파일명(tree.png)으로 경로 수정 */
+    /* 깃허브에 업로드한 배경 이미지 파일명(tree.png) */
     background: url('tree.png') no-repeat center center fixed;
     background-color: #a8e6cf; /* 이미지 로딩 전 기본 배경색 */
     background-size: cover;
@@ -107,12 +107,18 @@
     align-items: center;
   }
 
+  /* --- [수정] 이모지 스타일에서 이미지 스타일로 변경 --- */
   #tree-display {
-    font-size: 150px;
+    /* font-size: 150px;  <- 제거 */
+    width: 200px; /* 원하시는 이미지 크기로 조절하세요 */
+    height: 200px; /* 원하시는 이미지 크기로 조절하세요 */
+    object-fit: contain; /* 이미지 비율 유지 */
+    aspect-ratio: 1 / 1;
     filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2));
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     margin-bottom: -20px;
   }
+  /* -------------------------------------------------- */
 
   /* 상태창 (하단 중앙) */
   .status-card {
@@ -242,7 +248,6 @@
 </head>
 <body>
 
-<!-- 부서 선택 화면 -->
 <div id="login-screen" class="container">
   <h2>어느 부서이신가요?</h2>
   <div class="dept-grid">
@@ -253,13 +258,12 @@
   </div>
 </div>
 
-<!-- 게임 메인 화면 -->
 <div id="game-screen" class="container">
   <h2><span id="current-dept"></span>의 나무</h2>
   
   <div id="tree-container">
-    <div id="tree-display">🌱</div>
-  </div>
+    <img id="tree-display" src="" alt="나무">
+    </div>
 
   <div class="status-card">
     <div style="display:flex; justify-content:center; align-items:center;">
@@ -286,7 +290,6 @@
   </div>
 </div>
 
-<!-- 물 주기 모달 -->
 <div id="action-modal" class="modal">
   <div class="modal-content">
     <h3>💧 물 주는 분은?</h3>
@@ -297,7 +300,6 @@
   </div>
 </div>
 
-<!-- 비료 모달 -->
 <div id="fertilizer-modal" class="modal">
   <div class="modal-content">
     <h3>✨ 미션 완료!</h3>
@@ -318,13 +320,16 @@
   let selectedDept = '';
   let currentExp = 0;
 
+  // --- [수정] 이모지 대신 이미지 파일 경로 설정 ---
+  // 준비하신 이미지 파일 이름으로 수정해주세요. (예: sprout.png, herb.png 등)
   const treeStages = [
-    { name: '새싹', icon: '🌱', limit: 100 },
-    { name: '나물', icon: '🌿', limit: 200 },
-    { name: '작은나무', icon: '🪴', limit: 300 },
-    { name: '큰나무', icon: '🌳', limit: 400 },
-    { name: '바나나', icon: '🍌', limit: Infinity }
+    { name: '새싹', icon: '새싹.jpg', limit: 100 },
+    { name: '나물', icon: '나물.jpg', limit: 200 },
+    { name: '작은나무', icon: '작은나무.jpg', limit: 300 },
+    { name: '큰나무', icon: '큰나무.jpg', limit: 400 },
+    { name: '바나나', icon: '바나나.jpg', limit: Infinity }
   ];
+  // ----------------------------------------------
 
   function selectDept(dept) {
     selectedDept = dept;
@@ -355,7 +360,11 @@
     if (currentStageIndex >= treeStages.length) currentStageIndex = treeStages.length - 1;
 
     const stage = treeStages[currentStageIndex];
-    document.getElementById('tree-display').innerText = stage.icon;
+    
+    // --- [수정] innerText 대신 src 속성 변경 ---
+    document.getElementById('tree-display').src = stage.icon;
+    // ------------------------------------------
+    
     document.getElementById('level-name').innerText = stage.name;
     document.getElementById('exp-display').innerText = currentExp;
     
