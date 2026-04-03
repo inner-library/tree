@@ -15,7 +15,8 @@
   
   #tree-display { font-size: 100px; margin: 10px 0; transition: transform 0.3s; }
   .action-btn { padding: 12px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; font-weight: bold; margin: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  .water-btn { background-color: #4CAF50; color: white; }
+  .water-btn { background-color: #4CAF50; color: white; transition: 0.3s; }
+  .water-btn:disabled { background-color: #9E9E9E; cursor: not-allowed; }
   .fertilizer-btn { background-color: #FFC107; color: black; transition: 0.3s; }
   .fertilizer-btn:disabled { background-color: #e0e0e0; color: #999; cursor: not-allowed; box-shadow: none; }
 
@@ -56,7 +57,7 @@
   <div class="level-badge">현재 단계: <span id="level-name">새싹</span></div>
   <div id="tree-display">🌱</div>
   
-  <p>경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">0</strong> <span style="color:#888; font-size: 14px;">/ <span id="next-exp">30</span></span></p>
+  <p>경험치: <strong id="exp-display" style="font-size: 24px; color: #4CAF50;">0</strong> <span style="color:#888; font-size: 14px;">/ <span id="next-exp">100</span></span></p>
 
   <button class="action-btn water-btn" onclick="openWaterModal()">💧 물 주기</button>
   <button class="action-btn fertilizer-btn" id="fert-btn" onclick="giveFertilizer()" disabled>✨ 비료(미션성공)</button>
@@ -68,7 +69,7 @@
     <p>부서: <strong id="modal-dept"></strong></p>
     <input type="text" id="user-name" placeholder="이름을 입력해주세요.">
     <br>
-    <button class="action-btn water-btn" onclick="submitWater()">확인</button>
+    <button class="action-btn water-btn" id="submit-water-btn" onclick="submitWater()">확인</button>
     <button class="action-btn" onclick="closeModal()" style="background:#eee;">취소</button>
   </div>
 </div>
@@ -83,11 +84,11 @@
   let currentExp = 0;
 
   const treeStages = [
-    { name: '새싹', icon: '🌱', limit: 30 },
-    { name: '나물', icon: '🌿', limit: 60 },
-    { name: '작은 나무', icon: '🪴', limit: 90 },
-    { name: '큰 나무', icon: '🌳', limit: 120 },
-    { name: '열매', icon: '🍎', limit: Infinity }
+    { name: '새싹', icon: '🌱', limit: 100 },
+    { name: '나물', icon: '🌿', limit: 200 },
+    { name: '작은나무', icon: '🪴', limit: 300 },
+    { name: '큰나무', icon: '🌳', limit: 400 },
+    { name: '바나나', icon: '🍌', limit: Infinity }
   ];
 
   function selectDept(dept) {
@@ -117,7 +118,7 @@
   }
 
   function updateTreeUI() {
-    let currentStageIndex = Math.floor(currentExp / 30);
+    let currentStageIndex = Math.floor(currentExp / 100);
     if (currentStageIndex >= treeStages.length) currentStageIndex = treeStages.length - 1;
 
     const stage = treeStages[currentStageIndex];
@@ -145,29 +146,59 @@
     document.getElementById('user-name').value = ''; 
   }
 
-  // --- 한글 깨짐 방지 인코딩 적용 ---
   function submitWater() {
-    const userName = document.getElementById('user-name').value;
+    const userName = document.getElementById('user-name').value.trim();
     if(!userName) { alert("이름을 입력해주세요!"); return; }
 
-    currentExp += 10;
-    updateTreeUI(); 
-    closeModal();
-    showToast(`성공! ${userName}님이 나무에게 물을 주었습니다 (+10)`);
+    const submitBtn = document.getElementById('submit-water-btn');
+    
+    // 중복 클릭 방지 및 시트 확인 중 표시
+    submitBtn.innerText = "시트 확인 중...";
+    submitBtn.disabled = true;
 
-    fetch(SCRIPT_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent('물')}&message=${encodeURIComponent(userName)}`
-    }).catch(error => console.error("데이터 저장 실패", error));
+    // 1. 구글 스프레드시트에 해당 유저가 최근 30분 이내에 물을 줬는지 확인 요청
+    const checkUrl = `${SCRIPT_URL}?action=checkCooldown&dept=${encodeURIComponent(selectedDept)}&name=${encodeURIComponent(userName)}`;
+    
+    fetch(checkUrl)
+      .then(response => response.json())
+      .then(data => {
+        if (data.allowed === false) {
+          // 30분이 안 지났으면 거절 메시지 출력
+          alert(`${userName}님은 이미 물을 주셨습니다! 💦\n약 ${data.remaining}분 후에 다른 기기가 아닌 어디서든 다시 시도해주세요.`);
+          submitBtn.innerText = "확인";
+          submitBtn.disabled = false;
+          return;
+        }
+
+        // 2. 30분이 지났거나 처음이라면 정상적으로 물 주기 진행
+        currentExp += 10;
+        updateTreeUI(); 
+        closeModal();
+        showToast(`성공! ${userName}님이 나무에게 물을 주었습니다 (+10)`);
+
+        // 버튼 상태 원상복구
+        submitBtn.innerText = "확인";
+        submitBtn.disabled = false;
+
+        // 실제 데이터 시트에 저장 (POST 요청)
+        fetch(SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `dept=${encodeURIComponent(selectedDept)}&type=${encodeURIComponent('물')}&message=${encodeURIComponent(userName)}`
+        }).catch(error => console.error("데이터 저장 실패", error));
+      })
+      .catch(error => {
+        alert("기록을 확인하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        submitBtn.innerText = "확인";
+        submitBtn.disabled = false;
+      });
   }
 
-  // --- 한글 깨짐 방지 인코딩 적용 ---
   function giveFertilizer() {
     const fertBtn = document.getElementById('fert-btn');
     fertBtn.disabled = true;
 
-    currentExp += 50;
+    currentExp += 10;
     updateTreeUI();
 
     const overlay = document.getElementById('success-overlay');
